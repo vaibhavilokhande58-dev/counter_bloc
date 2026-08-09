@@ -1,5 +1,10 @@
+import 'package:counter_bloc/counter_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'login/login_bloc.dart';
+import 'login/login_event.dart';
+import 'login/login_state.dart';
 
 import 'bloc/counter_bloc.dart';
 import 'bloc/counter_event.dart';
@@ -16,18 +21,35 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Counter BLoC',
-      theme: ThemeData(useMaterial3: true, fontFamily: 'Arial'),
+      title: 'Counter BLoC And Login BLoC',
+      theme: ThemeData(useMaterial3: true),
       home: BlocProvider(
-        create: (context) => CounterBloc(),
-        child: const CounterScreen(),
+        create: (_) => LoginBloc(),
+        child: const LoginScreen(),
       ),
     );
   }
 }
 
-class CounterScreen extends StatelessWidget {
-  const CounterScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  bool obscurePassword = true;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,12 +57,24 @@ class CounterScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF7F8FC),
 
       body: SafeArea(
-        child: BlocConsumer<CounterBloc, CounterState>(
+        child: BlocConsumer<LoginBloc, LoginState>(
           listener: (context, state) {
-            if (state.isReset) {
+            if (state is LoginSuccess) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BlocProvider(
+                    create: (_) => CounterBloc(),
+                    child: const CounterScreen(),
+                  ),
+                ),
+              );
+            }
+
+            if (state is LoginError) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Counter reset successfully'),
+                SnackBar(
+                  content: Text(state.message),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -48,248 +82,191 @@ class CounterScreen extends StatelessWidget {
           },
 
           builder: (context, state) {
-            final int counter = state.counter;
+            final isLoading = state is LoginLoading;
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
 
-              child: Column(
-                children: [
-                  const SizedBox(height: 15),
-
-                  const Text(
-                    'Counter BLoC',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  Text(
-                    'State Management',
-                    style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
-                  ),
-
-                  const SizedBox(height: 35),
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(30),
-
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF6C63FF), Color(0xFF8B7CFF)],
-                      ),
-
-                      borderRadius: BorderRadius.circular(30),
-
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF6C63FF).withOpacity(0.25),
-                          blurRadius: 25,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
-                    ),
-
-                    child: Column(
-                      children: [
-                        Text(
-                          'CURRENT VALUE',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 2,
-                            color: Colors.white.withOpacity(0.8),
-                          ),
-                        ),
-
-                        const SizedBox(height: 15),
-
-                        Text(
-                          '$counter',
-                          style: const TextStyle(
-                            fontSize: 78,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        Text(
-                          '$counter / 100',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.85),
-                          ),
-                        ),
-
-                        const SizedBox(height: 18),
-
-                        ClipRRect(borderRadius: BorderRadius.circular(20)),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 45),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _CounterButton(
-                        icon: Icons.remove,
-                        onPressed: counter == 0
-                            ? null
-                            : () {
-                                context.read<CounterBloc>().add(Decrement());
-                              },
-                      ),
-
-                      const SizedBox(width: 35),
-
-                      _CounterButton(
-                        icon: Icons.add,
-                        onPressed: counter == 100
-                            ? null
-                            : () {
-                                context.read<CounterBloc>().add(Increment());
-                              },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        height: 90,
                         width: 90,
-                        child: Text(
-                          'Decrease',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade600,
-                          ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6C63FF),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Icon(
+                          Icons.person_outline_rounded,
+                          color: Colors.white,
+                          size: 60,
                         ),
                       ),
+                    ),
 
-                      const SizedBox(width: 35),
+                    const SizedBox(height: 25),
 
-                      SizedBox(
-                        width: 90,
-                        child: Text(
-                          'Increase',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(),
-
-                  if (counter == 100)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 15),
+                    const Center(
                       child: Text(
-                        'Maximum limit reached',
+                        'Welcome Back!',
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 58,
-
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        context.read<CounterBloc>().add(Reset());
-                      },
-
-                      icon: const Icon(Icons.refresh_rounded),
-
-                      label: const Text(
-                        'RESET COUNTER',
-                        style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 30,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF6C63FF),
-
-                        side: const BorderSide(
-                          color: Color(0xFF6C63FF),
-                          width: 1.5,
-                        ),
-
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 15),
-                ],
+                    const SizedBox(height: 8),
+
+                    Center(
+                      child: Text(
+                        'Login to continue',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    const Text(
+                      'Email',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your email',
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    const Text(
+                      'Password',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    TextField(
+                      controller: passwordController,
+                      obscureText: obscurePassword,
+
+                      decoration: InputDecoration(
+                        hintText: 'Enter your password',
+
+                        prefixIcon: const Icon(Icons.lock_outline),
+
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              obscurePassword = !obscurePassword;
+                            });
+                          },
+
+                          icon: Icon(
+                            obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+
+                        filled: true,
+                        fillColor: Colors.white,
+
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 58,
+
+                      child: ElevatedButton(
+                        onPressed: isLoading
+                            ? null
+                            : () {
+                                context.read<LoginBloc>().add(
+                                  LoginSubmitted(
+                                    email: emailController.text,
+                                    password: passwordController.text,
+                                  ),
+                                );
+                              },
+
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6C63FF),
+                          foregroundColor: Colors.white,
+
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 25,
+                                width: 25,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'LOGIN',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 25),
+
+                    Center(
+                      child: Text(
+                        'BLoC State Management',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _CounterButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
-
-  const _CounterButton({required this.icon, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final bool disabled = onPressed == null;
-
-    return SizedBox(
-      height: 75,
-      width: 90,
-
-      child: ElevatedButton(
-        onPressed: onPressed,
-
-        style: ElevatedButton.styleFrom(
-          elevation: disabled ? 0 : 5,
-
-          backgroundColor: disabled ? Colors.grey.shade300 : Colors.white,
-
-          foregroundColor: disabled
-              ? Colors.grey.shade500
-              : const Color(0xFF6C63FF),
-
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-        ),
-
-        child: Icon(icon, size: 32),
       ),
     );
   }
